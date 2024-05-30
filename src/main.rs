@@ -1,65 +1,66 @@
-mod blockchain;
+#[macro_use] extern crate lazy_static;
+extern crate chrono;
+extern crate crypto;
+extern crate serde;
+extern crate serde_json;
+extern crate rdkafka;
+
 mod block;
+mod blockchain;
+
+use std::sync::Mutex;
+use std::time::Duration;
+use rdkafka::config::ClientConfig;
+use rdkafka::consumer::{BaseConsumer, Consumer};
+use rdkafka::message::Message;
+use rdkafka::producer::{BaseProducer, BaseRecord};
+use log::{info, error};
 
 use block::Block;
 use blockchain::Blockchain;
 
+lazy_static! {
+    static ref BLOCKCHAIN: Mutex<Blockchain> = Mutex::new(Blockchain::new("blockchain_data.json"));
+}
+
 fn main() {
-    
-    let mut blockchain = Blockchain::new();
+    env_logger::init();
+    info!("Starting Rust blockchain...");
 
-    
-    let difficulties = vec![2, 3, 4];
-    for difficulty in difficulties {
-        let data = format!("Dados do Bloco com dificuldade {}", difficulty);
-        blockchain.add_block(data.clone(), difficulty); 
+    let consumer: BaseConsumer = ClientConfig::new()
+        .set("group.id", "rust_blockchain_group")
+        .set("bootstrap.servers", "localhost:9092")
+        .create()
+        .expect("Consumer creation failed");
+
+    consumer.subscribe(&["blockchain"]).expect("Failed to subscribe to topic");
+
+    loop {
+        match consumer.poll(Duration::from_millis(100)) {
+            Some(Ok(message)) => {
+                if let Some(payload) = message.payload_view::<str>() {
+                    match payload {
+                        Ok(text) => handle_message(text),
+                        Err(e) => error!("Error while deserializing message payload: {:?}", e),
+                    }
+                }
+            },
+            Some(Err(e)) => error!("Error while receiving message: {:?}", e),
+            None => (),
+        }
     }
+}
 
-    
-    for block in blockchain.get_blocks() {
-        println!("Index: {}", block.index);
-        println!("Timestamp: {}", block.timestamp);
-        println!("Data: {}", block.data);
-        println!("Previous Hash: {}", block.previous_hash);
-        println!("Hash: {}", block.hash);
-        println!();
+fn handle_message(message: &str) {
+    let parts: Vec<&str> = message.split(':').collect();
+    if parts.len() == 2 && parts[0] == "add_block" {
+        let data = parts[1].to_string();
+        let difficulty = 2;  // Define a dificuldade conforme necessário
+
+        let mut blockchain = BLOCKCHAIN.lock().unwrap();
+        match blockchain.add_block(data, difficulty) {
+            Ok(_) => info!("Block added successfully"),
+            Err(e) => error!("Failed to add block: {:?}", e),
+        }
     }
-
-    
-    let data_fail = "Dados do Bloco com dificuldade 5 que falhará na mineração".to_owned();
-    let mut new_block_fail = Block::create_block(blockchain.get_next_index(), data_fail.clone(), blockchain.get_last_hash(), 5);
-    new_block_fail.mine_block_with_difficulty();
-    println!("Resultado da mineração do bloco com dificuldade 5 que falha:");
-    new_block_fail.mine_block_with_difficulty_and_print();
-    println!();
-
-    
-    let data_success = "Dados do Bloco com dificuldade 4 que será minerado com sucesso".to_owned();
-    let mut new_block_success = Block::create_block(blockchain.get_next_index(), data_success.clone(), blockchain.get_last_hash(), 4);
-    new_block_success.mine_block_with_difficulty();
-    println!("Resultado da mineração do bloco com dificuldade 4 que terá sucesso:");
-    new_block_success.mine_block_with_difficulty_and_print();
-    println!();
-
-    
-    blockchain.add_block(data_success, 4);
-
-    
-    for block in blockchain.get_blocks() {
-        println!("Index: {}", block.index);
-        println!("Timestamp: {}", block.timestamp);
-        println!("Data: {}", block.data);
-        println!("Previous Hash: {}", block.previous_hash);
-        println!("Hash: {}", block.hash);
-        println!();
-    }
-
-     
-     let data_fail = "Dados do Bloco com dificuldade 6 que falhará na mineração".to_owned();
-     let mut new_block_fail = Block::create_block(blockchain.get_next_index(), data_fail.clone(), blockchain.get_last_hash(), 6);
-     new_block_fail.mine_block_with_difficulty();
-     println!("Resultado da mineração do bloco com dificuldade 6 que falha:");
-     new_block_fail.mine_block_with_difficulty_and_print();
-     println!();
-     
 }
