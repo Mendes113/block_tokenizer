@@ -1,7 +1,9 @@
 package services
 
 import (
-    "github.com/confluentinc/confluent-kafka-go/kafka"
+	"log"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 // BlockchainService é a estrutura que contém os métodos relacionados à blockchain
@@ -26,6 +28,8 @@ func (s *BlockchainService) AddBlock(data string) error {
 		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, // Pass the address of the string variable
 		Value:          []byte(data),
 	}, nil)
+
+	log.Printf("Sent message to topic %s: %s\n", topic, data)
 
 	// Retorna nil se a operação for bem-sucedida, caso contrário, um erro
 	return nil

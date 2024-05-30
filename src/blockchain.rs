@@ -1,5 +1,5 @@
 use crate::block::Block;
-use log::error;
+use log::{error, info};
 use std::fs;
 use std::path::Path;
 use serde_json;
@@ -24,6 +24,7 @@ impl Blockchain {
     }
 
     pub fn add_block(&mut self, data: String, difficulty: usize) -> Result<(), &'static str> {
+        info!("Adding block to blockchain");
         let previous_hash = self.get_last_hash();
         let new_block = Block::create_block(self.blocks.len() as u32, data, previous_hash, difficulty);
 
