@@ -2,46 +2,73 @@ package services
 
 import (
 	"log"
-
+	"blockchain.api/internal/database"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // BlockchainService é a estrutura que contém os métodos relacionados à blockchain
 type BlockchainService struct {
-    producer *kafka.Producer
+	producer *kafka.Producer
+	client   *mongo.Client
+}
+
+// BlockchainDataService é a estrutura que contém os métodos relacionados ao consumo de dados da blockchain
+type BlockchainDataService struct {
 	consumer *kafka.Consumer
+	client   *mongo.Client
+	msgChan  chan *kafka.Message
 }
 
 // NewBlockchainService cria uma nova instância do serviço BlockchainService
-func NewBlockchainService(producer *kafka.Producer) *BlockchainService {
-    // Aqui você pode inicializar quaisquer dependências necessárias, como o produtor Kafka
-    return &BlockchainService{
-        producer: producer,
-    }
+func NewBlockchainService(producer *kafka.Producer, client *mongo.Client) *BlockchainService {
+	return &BlockchainService{
+		producer: producer,
+		client:   client,
+	}
 }
 
-func NewBlockChainDataService(consumer *kafka.Consumer) *BlockchainService {
-	return &BlockchainService{
+// NewBlockchainDataService cria uma nova instância do serviço BlockchainDataService
+func NewBlockchainDataService(consumer *kafka.Consumer, client *mongo.Client, msgChan chan *kafka.Message) *BlockchainDataService {
+	service := &BlockchainDataService{
 		consumer: consumer,
+		client:   client,
+		msgChan:  msgChan,
+	}
+
+	go service.processMessages()
+
+	return service
+}
+
+// AddBlock envia uma mensagem para o Kafka para adicionar um bloco à blockchain
+func (s *BlockchainService) AddBlock(data string) error {
+	topic := "blockchain"
+	s.producer.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Value:          []byte(data),
+	}, nil)
+
+	log.Printf("Sent message to topic %s: %s\n", topic, data)
+	return nil
+}
+
+// GetMessageAndSave salva uma mensagem recebida no MongoDB
+func (s *BlockchainDataService) GetMessageAndSave(message MessageData) {
+	database.SaveCollection(s.client, "blockchain_data", message)
+}
+
+// processMessages processa mensagens recebidas do Kafka
+func (s *BlockchainDataService) processMessages() {
+	for msg := range s.msgChan {
+		messageData := MessageData{Message: string(msg.Value)}
+		s.GetMessageAndSave(messageData)
 	}
 }
 
 
 
-// AddBlock envia uma mensagem para o Kafka para adicionar um bloco à blockchain
-func (s *BlockchainService) AddBlock(data string) error {
-	// Aqui você enviaria uma mensagem para o Kafka para adicionar um bloco à blockchain
-	// Por exemplo:
-	topic := "blockchain" // Declare a string variable and assign the value "blockchain"
-	s.producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, // Pass the address of the string variable
-		Value:          []byte(data),
-	}, nil)
-
-	log.Printf("Sent message to topic %s: %s\n", topic, data)
-
-	// Retorna nil se a operação for bem-sucedida, caso contrário, um erro
-	return nil
+type MessageData struct {
+	Message string `json:"message"`
 }
 
-// Aqui você pode adicionar mais métodos conforme necessário para manipular a blockchain
