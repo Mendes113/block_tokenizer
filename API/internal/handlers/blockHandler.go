@@ -34,14 +34,16 @@ func BlockAddHandler(blockchainService *services.BlockchainService) fiber.Handle
 
 
 // BlockGetHandler é o manipulador para obter informações sobre um bloco da blockchain
-func BlockGetHandler(c *fiber.Ctx) error {
-    // Aqui você obteria informações sobre um bloco específico da blockchain
-    // Por exemplo:
-    // blockInfo := blockchainService.GetBlock(blockID)
+// func BlockGetHandler(c *fiber.Ctx, blockchainService *services.BlockchainService) error {
+//     // Aqui você obteria informações sobre um bloco específico da blockchain
+//     // Por exemplo:
+	
+//     blockInfo := blockchainService.GetBlockInfo("blockID")
 
-    // Retorna as informações do bloco em formato JSON
-    // return c.JSON(blockInfo)
 
-    // Exemplo de resposta enquanto não há lógica implementada
-    return c.SendString("Block Get Handler")
-}
+//     // Retorna as informações do bloco em formato JSON
+//     // return c.JSON(blockInfo)
+
+//     // Exemplo de resposta enquanto não há lógica implementada
+//     return c.SendString("Block Get Handler")
+// }

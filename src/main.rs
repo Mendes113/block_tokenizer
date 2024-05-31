@@ -38,6 +38,12 @@ fn main() {
 
     consumer.subscribe(&["blockchain"]).expect("Failed to subscribe to topic");
     info!("Subscribed to blockchain topic");
+
+
+
+   
+    
+  
     loop {
         match consumer.poll(Duration::from_millis(10)) {
             Some(Ok(message)) => {
@@ -66,11 +72,29 @@ fn main() {
     
             let mut blockchain = BLOCKCHAIN.lock().unwrap();
             match blockchain.add_block(data, difficulty) {
-                Ok(_) => info!("Block added successfully"),
+                Ok(_) => {
+                    info!("Block added successfully");
+    
+                    // Configurar o Kafka Producer
+                    let producer: BaseProducer = ClientConfig::new()
+                        .set("bootstrap.servers", "localhost:9092")
+                        .create()
+                        .expect("Producer creation failed");
+    
+                    // Enviar mensagem para o Kafka
+                    info!("sending message to blockchain_data topic");
+                    producer.send(
+                   
+                        BaseRecord::to("blockchain_data")
+                            .key("blockchain_data")
+                            .payload("add_block:Hello, blockchain!")
+                    ).expect("Failed to send message");
+                },
                 Err(e) => error!("Failed to add block: {:?}", e),
             }
         }
     }
+    
     
 
     

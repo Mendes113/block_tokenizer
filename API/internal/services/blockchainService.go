@@ -9,6 +9,7 @@ import (
 // BlockchainService é a estrutura que contém os métodos relacionados à blockchain
 type BlockchainService struct {
     producer *kafka.Producer
+	consumer *kafka.Consumer
 }
 
 // NewBlockchainService cria uma nova instância do serviço BlockchainService
@@ -18,6 +19,14 @@ func NewBlockchainService(producer *kafka.Producer) *BlockchainService {
         producer: producer,
     }
 }
+
+func NewBlockChainDataService(consumer *kafka.Consumer) *BlockchainService {
+	return &BlockchainService{
+		consumer: consumer,
+	}
+}
+
+
 
 // AddBlock envia uma mensagem para o Kafka para adicionar um bloco à blockchain
 func (s *BlockchainService) AddBlock(data string) error {
