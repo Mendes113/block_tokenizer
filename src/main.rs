@@ -57,6 +57,7 @@ fn main() {
     }
 }
 
+
 fn handle_message(message: &str) {
     info!("Received message: {}", message); // Adiciona log de entrada
 
@@ -69,7 +70,7 @@ fn handle_message(message: &str) {
         match blockchain.add_block(data, difficulty) {
             Ok(_) => {
                 info!("Block added successfully");
-
+                let last_block_json = blockchain.get_last_block_to_json().unwrap();
                 // Configurar o Kafka Producer
                 let producer: BaseProducer = ClientConfig::new()
                     .set("bootstrap.servers", "127.0.0.1:9092")
@@ -81,7 +82,7 @@ fn handle_message(message: &str) {
                 let result = producer.send(
                     BaseRecord::to("blockchain_data")
                         .key("blockchain_data")
-                        .payload("add_block:Hello, blockchain!")
+                        .payload(&last_block_json)
                 );
 
                 match result {
@@ -92,7 +93,31 @@ fn handle_message(message: &str) {
                     Err(e) => error!("Failed to send message: {:?}", e),
                 }
             },
-            Err(e) => error!("Failed to add block: {:?}", e),
+            Err(e) => {
+                error!("Failed to add block: {:?}", e);
+                // Configurar o Kafka Producer para mensagens de erro
+                let producer: BaseProducer = ClientConfig::new()
+                    .set("bootstrap.servers", "127.0.0.1:9092")
+                    .create()
+                    .expect("Producer creation failed");
+
+                // Enviar mensagem de erro para o Kafka
+                info!("Sending error message to blockchain_error topic");
+                let error_message = format!("Failed to add block: {:?}", e);
+                let result = producer.send(
+                    BaseRecord::to("blockchain_err")
+                        .key("blockchain_error")
+                        .payload(&error_message)
+                );
+
+                match result {
+                    Ok(_) => {
+                        info!("Error message sent successfully");
+                        producer.poll(Duration::from_millis(10));
+                    },
+                    Err(e) => error!("Failed to send error message: {:?}", e),
+                }
+            },
         }
     }
 }

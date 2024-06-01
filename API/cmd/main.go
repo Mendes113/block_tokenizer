@@ -1,14 +1,15 @@
 package main
 
 import (
-	"blockchain.api/internal/database"
-	"blockchain.api/internal/handlers"
-	mykafka "blockchain.api/internal/kafkahandler"
-	"blockchain.api/internal/services"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"blockchain.api/internal/database"
+	"blockchain.api/internal/handlers"
+	mykafka "blockchain.api/internal/kafkahandler"
+	"blockchain.api/internal/services"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/gofiber/fiber/v2"
@@ -32,14 +33,18 @@ func main() {
 	}
 	defer producer.Close()
 
+
 	// Inicializar os serviços da blockchain com o produtor e o cliente MongoDB
 	msgChan := make(chan *kafka.Message)
 	consumer := mykafka.InitConsumer("blockchain_data", msgChan)
-
+	errorConsumer := mykafka.InitConsumer("blockchain_err", nil) // Consumidor para mensagens de erro
 	blockchainService := services.NewBlockchainService(producer, client)
 	blockchainDataService := services.NewBlockchainDataService(consumer, client, msgChan)
 	_ = blockchainDataService
-
+	errorChan := make(chan error)
+	errorHandlingService := services.NewErrorHandlingService(errorConsumer, errorChan)
+	errorHandlingService.Start(errorConsumer)
+	
 	// Definir rotas
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
@@ -47,6 +52,7 @@ func main() {
 
 	app.Get("/health", handlers.HealthCheckHandler)
 	app.Post("/block", handlers.BlockAddHandler(blockchainService))
+
 
 	// Manejar o encerramento gracioso
 	go func() {
