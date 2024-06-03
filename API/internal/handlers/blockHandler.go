@@ -21,11 +21,11 @@ func BlockAddHandler(blockchainService *services.BlockchainService) fiber.Handle
             return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Bad Request"})
         }
 
-        // // Chame o método AddBlock no serviço BlockchainService passando os dados
-        // if err := blockchainService.AddBlock(req.Data); err != nil {
-        //     // Se ocorrer um erro ao adicionar o bloco, retorne um erro de servidor interno
-        //     return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to add block"})
-        // }
+        // Chame o método AddBlock no serviço BlockchainService passando os dados
+        if err := blockchainService.AddBlock(req.Data); err != nil {
+            // Se ocorrer um erro ao adicionar o bloco, retorne um erro de servidor interno
+            return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to add block"})
+        }
 
         // Retorna uma resposta de sucesso
         return c.JSON(fiber.Map{"message": "Pedido Enviado"})

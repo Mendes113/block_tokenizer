@@ -16,6 +16,8 @@ use rdkafka::consumer::{BaseConsumer, Consumer};
 use rdkafka::message::Message;
 use rdkafka::producer::{BaseProducer, BaseRecord};
 use log::{error, info, LevelFilter};
+mod ethereum;
+use ethereum::send_data_to_ethereum;
 
 use block::Block;
 use blockchain::Blockchain;
@@ -24,7 +26,8 @@ lazy_static! {
     static ref BLOCKCHAIN: Mutex<Blockchain> = Mutex::new(Blockchain::new("blockchain_data.json"));
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::Builder::new()
         .filter_level(LevelFilter::Info)
         .init();
@@ -45,7 +48,7 @@ fn main() {
                 if let Some(payload) = message.payload_view::<str>() {
                     match payload {
                         Ok(text) => {
-                            handle_message(text);
+                           handle_message(text).await;
                         },
                         Err(e) => error!("Error while deserializing message payload: {:?}", e),
                     }
@@ -57,20 +60,32 @@ fn main() {
     }
 }
 
-
-fn handle_message(message: &str) {
+async fn handle_message(message: &str) {
     info!("Received message: {}", message); // Adiciona log de entrada
 
     let parts: Vec<&str> = message.split(':').collect();
     if parts.len() == 2 && parts[0] == "add_block" {
         let data = parts[1].to_string();
-        let difficulty = 2;  // Define a dificuldade conforme necessário
+        let difficulty = 2; // Define a dificuldade conforme necessário
+
+        // Enviar dados do bloco para Ethereum
+        let eth_provider_url = "https://mainnet.infura.io/v3/68202ac2065b4e7593fa67a38a8638cd";
+        let contract_address = "0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8";
 
         let mut blockchain = BLOCKCHAIN.lock().unwrap();
         match blockchain.add_block(data, difficulty) {
             Ok(_) => {
                 info!("Block added successfully");
                 let last_block_json = blockchain.get_last_block_to_json().unwrap();
+                let last_block_json_clone = last_block_json.clone();
+
+                // Executa a chamada assíncrona ao Ethereum
+                tokio::spawn(async move {
+                    if let Err(e) = send_data_to_ethereum(eth_provider_url, contract_address, last_block_json).await {
+                        error!("Failed to send data to Ethereum: {:?}", e);
+                    }
+                });
+
                 // Configurar o Kafka Producer
                 let producer: BaseProducer = ClientConfig::new()
                     .set("bootstrap.servers", "127.0.0.1:9092")
@@ -82,7 +97,7 @@ fn handle_message(message: &str) {
                 let result = producer.send(
                     BaseRecord::to("blockchain_data")
                         .key("blockchain_data")
-                        .payload(&last_block_json)
+                        .payload(&last_block_json_clone)
                 );
 
                 match result {
