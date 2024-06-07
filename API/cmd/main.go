@@ -34,13 +34,13 @@ func main() {
 	defer producer.Close()
 
 
-	// Inicializar os serviços da blockchain com o produtor e o cliente MongoDB
-	msgChan := make(chan *kafka.Message)
-	consumer := mykafka.InitConsumer("blockchain_data", msgChan)
+	// // Inicializar os serviços da blockchain com o produtor e o cliente MongoDB
+	// msgChan := make(chan *kafka.Message)
+	// consumer := mykafka.InitConsumer("blockchain_data", msgChan)
 	errorConsumer := mykafka.InitConsumer("blockchain_err", nil) // Consumidor para mensagens de erro
 	blockchainService := services.NewBlockchainService(producer, client)
-	blockchainDataService := services.NewBlockchainDataService(consumer, client, msgChan)
-	_ = blockchainDataService
+	// blockchainDataService := services.NewBlockchainDataService(consumer, client, msgChan)
+	// _ = blockchainDataService
 	errorChan := make(chan error)
 	errorHandlingService := services.NewErrorHandlingService(errorConsumer, errorChan)
 	errorHandlingService.Start(errorConsumer)
