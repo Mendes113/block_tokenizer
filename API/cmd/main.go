@@ -52,7 +52,14 @@ func main() {
 
 	app.Get("/health", handlers.HealthCheckHandler)
 	app.Post("/block", handlers.BlockAddHandler(blockchainService))
-
+	app.Get("/gas/base-fee-trend", handlers.BaseFeeTrendHandler)
+	app.Get("/gas/estimated-base-fee", handlers.EstimatedBaseFeeHandler)
+	app.Get("/gas/network-congestion", handlers.NetworkCongestionHandler)
+	app.Get("/gas/priority-fee-trend", handlers.PriorityFeeTrendHandler)
+	app.Get("/gas/historical-base-fee-range", handlers.HistoricalBaseFeeRangeHandler)
+	app.Get("/gas/historical-priority-fee-range", handlers.HistoricalPriorityFeeRangeHandler)
+	app.Get("/gas/latest-priority-fee-range", handlers.LatestPriorityFeeRangeHandler)
+	app.Get("/gas/all", handlers.AllGasDataHandler)
 
 	// Manejar o encerramento gracioso
 	go func() {

@@ -1,2 +1,5 @@
 /target
 Geth/.env
+Geth/.env
+API/cmd/.env
+Geth/.env
